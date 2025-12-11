@@ -1,0 +1,78 @@
+{
+    "powerbi": [
+        ".pbix",
+        ".pbit",
+        ".pbiviz"
+    ],
+    "word": [
+        ".doc",
+        ".docx",
+        ".docm",
+        ".dot"
+    ],
+    "excel": [
+        ".xls",
+        ".xlsx",
+        ".xlsm",
+        ".xlt"
+    ],
+    "pdf": [
+        ".pdf"
+    ],
+    "фото": [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".raw",
+        ".svg"
+    ],
+    "архивы": [
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".iso",
+        ".img"
+    ],
+    "эцп": [
+        ".pfx",
+        ".cer",
+        ".key",
+        ".p12"
+    ],
+    "xmind": [
+        ".xmind"
+    ],
+    "office": [
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".rtf"
+    ],
+    "office_old": [
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".rtf"
+    ],
+    "видео": [
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".wmv",
+        ".mkv",
+        ".flv",
+        ".webm",
+        ".3gp"
+    ]
+}

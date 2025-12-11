@@ -1,0 +1,4 @@
+# requirements.txt для FileSearcherApp
+PyQt6==6.7.0  # Основная библиотека для GUI (PyQt6)
+python-dotenv
+google-genai
