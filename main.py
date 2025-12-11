@@ -181,7 +181,7 @@ class ModernSearchApp(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("File Finder Pro v11.0 (JSON-База)")
+        self.setWindowTitle("File Finder Pro v10.0 (JSON-База)")
         self.resize(1100, 750)
         
         self.current_theme = "dark"
