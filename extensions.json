@@ -1,8 +1,9 @@
 {
-    "powerbi": [
+    "power-bi": [
         ".pbix",
         ".pbit",
-        ".pbiviz"
+        ".pbi",
+        ".rdl"
     ],
     "word": [
         ".doc",
@@ -39,11 +40,9 @@
         ".img"
     ],
     "эцп": [
-        ".pfx",
-        ".cer",
-        ".key",
         ".p12"
     ],
+
     "xmind": [
         ".xmind"
     ],
