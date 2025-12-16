@@ -2,3 +2,4 @@
 PyQt6==6.7.0  # Основная библиотека для GUI (PyQt6)
 python-dotenv
 google-genai
+auto-py-to-exe
