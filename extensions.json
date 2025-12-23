@@ -1,24 +1,59 @@
 {
+    "office": [
+        ".doc",
+        ".docx",
+        ".docm",
+        ".rtf",
+        ".pdf",
+        ".txt",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".odt",
+        ".ods",
+        ".odp"
+    ],
+    "office_old": [
+        ".doc",
+        ".xls",
+        ".ppt",
+        ".rtf",
+        ".dot",
+        ".xlt",
+        ".pps"
+    ],
+    "word": [
+        ".doc",
+        ".docx",
+        ".docm",
+        ".dot",
+        ".dotx",
+        ".rtf"
+    ],
+    "excel": [
+        ".xls",
+        ".xlsx",
+        ".xlsm",
+        ".xlsb",
+        ".xlt",
+        ".csv",
+        ".xml"
+    ],
     "power-bi": [
         ".pbix",
         ".pbit",
         ".pbi",
         ".rdl"
     ],
-    "word": [
-        ".doc",
-        ".docx",
-        ".docm",
-        ".dot"
-    ],
-    "excel": [
-        ".xls",
-        ".xlsx",
-        ".xlsm",
-        ".xlt"
-    ],
     "pdf": [
         ".pdf"
+    ],
+    "xmind": [
+        ".xmind"
+    ],
+    "эцп": [
+        ".p12"
     ],
     "фото": [
         ".jpg",
@@ -27,42 +62,12 @@
         ".gif",
         ".bmp",
         ".tiff",
+        ".tif",
+        ".svg",
+        ".webp",
+        ".ico",
         ".raw",
-        ".svg"
-    ],
-    "архивы": [
-        ".zip",
-        ".rar",
-        ".7z",
-        ".tar",
-        ".gz",
-        ".iso",
-        ".img"
-    ],
-    "эцп": [
-        ".p12"
-    ],
-
-    "xmind": [
-        ".xmind"
-    ],
-    "office": [
-        ".doc",
-        ".docx",
-        ".xls",
-        ".xlsx",
-        ".ppt",
-        ".pptx",
-        ".rtf"
-    ],
-    "office_old": [
-        ".doc",
-        ".docx",
-        ".xls",
-        ".xlsx",
-        ".ppt",
-        ".pptx",
-        ".rtf"
+        ".heic"
     ],
     "видео": [
         ".mp4",
@@ -72,6 +77,44 @@
         ".mkv",
         ".flv",
         ".webm",
-        ".3gp"
+        ".3gp",
+        ".m4v",
+        ".ts"
+    ],
+    "архивы": [
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".iso",
+        ".img",
+        ".dmg",
+        ".pkg"
+    ],
+    "text_code": [
+        ".txt",
+        ".md",
+        ".log",
+        ".ini",
+        ".cfg",
+        ".conf",
+        ".json",
+        ".xml",
+        ".yaml",
+        ".yml",
+        ".csv",
+        ".sql",
+        ".bat",
+        ".cmd",
+        ".sh",
+        ".ps1",
+        ".py",
+        ".js",
+        ".html",
+        ".css",
+        ".java",
+        ".cpp",
+        ".php"
     ]
 }
