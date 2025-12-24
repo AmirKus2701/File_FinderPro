@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
-from PyQt6.QtGui import QCursor, QIcon
+from PyQt6.QtGui import QCursor, QIcon, QKeySequence, QShortcut # Добавил QKeySequence и QShortcut
 
 # --- 0. НАСТРОЙКИ ЦВЕТОВ (ТЕМЫ) ---
 THEMES = {
@@ -143,6 +143,7 @@ class HistoryDialog(QDialog):
     def __init__(self, history_list, theme_data, parent=None):
         super().__init__(parent)
         self.setWindowTitle("История путей поиска")
+        
         self.setStyleSheet(
             f"""
             background-color: {theme_data['dialog_bg']}; 
@@ -152,6 +153,11 @@ class HistoryDialog(QDialog):
             QListWidget {{ background-color: {theme_data['input_bg']}; border: 1px solid {theme_data['border']}; border-radius: 8px; }}
             QListWidget::item {{ padding: 5px; }}
             QListWidget::item:hover {{ background-color: {theme_data['hover']}; }}
+            QListWidget::item:selected {{
+                background-color: {theme_data['hover']}; 
+                color: {theme_data['text_main']};
+                border: none;
+            }}
         """
         )
         self.history_list = history_list
@@ -161,7 +167,7 @@ class HistoryDialog(QDialog):
         layout.addWidget(QLabel("Выберите ранее использованную папку:"))
 
         self.list_widget = QListWidget()
-        self.list_widget.itemClicked.connect(self.select_path_and_accept)
+        self.list_widget.itemDoubleClicked.connect(self.select_path_and_accept)
         self._populate_list()
         layout.addWidget(self.list_widget)
 
@@ -234,10 +240,9 @@ class SearchThread(QThread):
             for root, dirs, files in os.walk(self.root_dir):
                 if self.isInterruptionRequested():
                     self.update_status.emit("Отменено", "Поиск прерван")
-                    return  # Прерываем, если поступил запрос
+                    return
 
                 if not self.deep_scan:
-                    # Игнорируем скрытые и системные папки (например, $RECYCLE.BIN)
                     dirs[:] = [
                         d for d in dirs if not d.startswith(".") and "$" not in d
                     ]
@@ -245,7 +250,7 @@ class SearchThread(QThread):
                 for file in files:
                     if self.isInterruptionRequested():
                         self.update_status.emit("Отменено", "Поиск прерван")
-                        return  # Прерываем, если поступил запрос
+                        return
 
                     processed_count += 1
                     if processed_count % 300 == 0:
@@ -270,14 +275,13 @@ class SearchThread(QThread):
                         results.append((file, full_path))
 
         except Exception as e:
-            # Гарантируем отправку статуса и сигнала finished, даже при ошибке
             self.update_status.emit("Ошибка", "Доступ запрещен или ошибка чтения")
             self.finished.emit()
             return
 
         self.update_results.emit(results)
         self.update_status.emit("Готово", f"Найдено: {len(results)}")
-        self.finished.emit()  # ГАРАНТИРОВАНОЕ ЗАВЕРШЕНИЕ
+        self.finished.emit()
 
 
 # --- 3. ЭЛЕМЕНТ СПИСКА ---
@@ -314,8 +318,7 @@ class ModernSearchApp(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # 1. Установка названия
-        self.setWindowTitle("File Finder Pro (Проводник) v12.5")
+        self.setWindowTitle("File Finder Pro (Проводник) v12.3")
         self.resize(1100, 750)
 
         self.current_theme = "dark"
@@ -335,10 +338,8 @@ class ModernSearchApp(QMainWindow):
 
         self.json_extension_data = self.load_extensions_json()
 
-        self.search_timer = QTimer()
-        self.search_timer.setSingleShot(True)
-        self.search_timer.interval = 600
-        self.search_timer.timeout.connect(self.start_search)
+        # Добавлен флаг для предотвращения множественных поисков
+        self.is_searching = False
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -353,13 +354,12 @@ class ModernSearchApp(QMainWindow):
         self.setup_content_area()
         self.update_path_display()
         self.apply_theme()
+        
+        # --- ДОБАВЛЕНО: Глобальная клавиша F5 для обновления ---
+        self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
+        self.refresh_shortcut.activated.connect(self.start_search)
 
-        # Инициализация категории по умолчанию без запуска поиска
-        self.current_filter_key = "ALL_FILES"
-        self.current_filter_ext = []
-        self.menu_buttons[0].setChecked(True)
-        self._update_hint_only("ALL_FILES")
-        # -----------------------------------------------------------------------------
+        self.change_category("ALL_FILES", self.menu_buttons[0])
 
     def load_extensions_json(self):
         file_path = "extensions.json"
@@ -398,7 +398,6 @@ class ModernSearchApp(QMainWindow):
             print(f"Ошибка сохранения настроек: {e}")
 
     def closeEvent(self, event):
-        # БЕЗОПАСНОСТЬ: Останавливаем поток при закрытии окна
         self.stop_all_threads()
         self.save_settings()
         super().closeEvent(event)
@@ -431,25 +430,30 @@ class ModernSearchApp(QMainWindow):
         self.menu_buttons = []
 
         icon_paths = {
-            "office_old": "./images/ms_office.png",
-            "xmind": "./images/XMind_icon.png",
+            "docs": "./images/doc_file.png",
+            "power-bi": "./images/power-bi.png",
             "word": "./images/word.png",
             "excel": "./images/excel.png",
-            "power-bi": "./images/power-bi_icon.png",
+            "powerpoint": "./images/powerpoint.png",
             "pdf": "./images/pdf.png",
+            "picture": "./images/picture.png",
+            "video": "./images/video.png",
+            "office_old": "./images/ms_office.png",
+            "xmind": "./images/XMind.png",
             "архивы": "./images/archive.png",
             "эцп": "./images/ncalayer.png",
         }
 
         self.categories_map = {
             "📂 Все файлы": "ALL_FILES",
-            "📄 Документы": "office",
+            " Документы": "docs",
             " PowerBI": "power-bi",
             " Word": "word",
             " Excel": "excel",
+            " PowerPoint": "powerpoint",
             " PDF": "pdf",
-            "🖼️ Изображения": "фото",
-            "🎥 Видео": "видео",
+            " Изображения": "picture",
+            " Видео": "video",
             " Архивы/Образы": "архивы",
             " ЭЦП Ключи": "эцп",
             " XMind": "xmind",
@@ -493,24 +497,22 @@ class ModernSearchApp(QMainWindow):
         content_layout.setContentsMargins(40, 40, 40, 40)
         content_layout.setSpacing(10)
 
-        # 1. ПАНЕЛЬ ТЕКУЩЕГО ПУТИ
         self.path_display_label = QLabel(f"Текущий путь: {self.root_dir}")
         self.path_display_label.setObjectName("PathDisplayLabel")
         self.path_display_label.setFixedHeight(30)
         content_layout.addWidget(self.path_display_label)
 
-        # 2. Верхняя панель (Поиск, Обзор и История)
         top_bar = QHBoxLayout()
         top_bar.setSpacing(10)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Введите имя файла...")
         self.search_input.setFixedHeight(50)
-        self.search_input.textChanged.connect(self.restart_timer)
+        # Отключен автопоиск: убрано textChanged.connect
+        self.search_input.returnPressed.connect(self.start_search)  # Поиск только по Enter
         top_bar.addWidget(self.search_input)
         top_bar.addStretch()
 
-        # Кнопка Обзор (Акцентная)
         self.browse_btn = QPushButton("Обзор...")
         self.browse_btn.setFixedWidth(100)
         self.browse_btn.setFixedHeight(50)
@@ -519,7 +521,6 @@ class ModernSearchApp(QMainWindow):
         self.browse_btn.setObjectName("AccentButton")
         top_bar.addWidget(self.browse_btn)
 
-        # Кнопка История (Второстепенная)
         self.history_btn = QPushButton("История поиска")
         self.history_btn.setFixedWidth(150)
         self.history_btn.setFixedHeight(50)
@@ -528,25 +529,23 @@ class ModernSearchApp(QMainWindow):
         self.history_btn.setObjectName("SecondaryButton")
         top_bar.addWidget(self.history_btn)
 
-        # Кнопка Обновить (Refresh)
         self.refresh_btn = QPushButton("")
         self.refresh_btn.setFixedSize(50, 50)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.refresh_btn.clicked.connect(
-            self.start_search
-        )  # Теперь эта кнопка просто запускает поиск с текущими параметрами
+        
+        # --- ИЗМЕНЕНИЕ: Кнопка обновляет поиск, а не просто текст ---
+        self.refresh_btn.clicked.connect(self.start_search)
+        
         self.refresh_btn.setObjectName("IconBtn")
         top_bar.addWidget(self.refresh_btn)
 
         content_layout.addLayout(top_bar)
 
-        # 3. ПОДСКАЗКА ДЛЯ ПОЛЬЗОВАТЕЛЯ
         self.hint_label = QLabel("")
         self.hint_label.setObjectName("HintLabel")
         self.hint_label.setFixedHeight(20)
         content_layout.addWidget(self.hint_label)
 
-        # 4. Инфо-панель (Статус)
         info_layout = QHBoxLayout()
         self.status_labels = {}
 
@@ -572,7 +571,6 @@ class ModernSearchApp(QMainWindow):
 
         content_layout.addLayout(info_layout)
 
-        # 5. Список результатов
         lbl_res = QLabel("РЕЗУЛЬТАТЫ ПОИСКА")
         lbl_res.setStyleSheet("font-weight: bold; margin-top: 10px; opacity: 0.7;")
         content_layout.addWidget(lbl_res)
@@ -581,8 +579,9 @@ class ModernSearchApp(QMainWindow):
         self.results_list.setWordWrap(True)
         self.results_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.results_list.customContextMenuRequested.connect(self.show_context_menu)
-        self.results_list.setAlternatingRowColors(True)
-        # Подключение двойного клика для открытия файла
+        
+        self.results_list.setAlternatingRowColors(True) 
+        
         self.results_list.itemDoubleClicked.connect(self.open_file_on_double_click)
 
         content_layout.addWidget(self.results_list)
@@ -591,34 +590,22 @@ class ModernSearchApp(QMainWindow):
         self.main_layout.addWidget(self.content_area)
 
     def is_root_dir_too_broad(self):
-        """Проверяет, является ли текущий корневой каталог (self.root_dir) корнем диска или файловой системы."""
         path = self.root_dir.strip()
-
         if not path:
             return True
-
-        # 1. Проверка для Windows: "C:\", "D:\", "C:/", "D:/"
         if os.name == "nt":
             drive, tail = os.path.splitdrive(path)
             if drive and not tail.strip(os.sep):
                 return True
-
-        # 2. Проверка для Unix-подобных систем: "/"
         if path == "/":
             return True
-
-        # 3. Проверка для домашней папки (иногда используется как корень по умолчанию)
         if path == os.path.expanduser("~"):
             return True
-
         return False
 
     def _update_hint_only(self, key):
-        """Обновляет только подсказку, основанную на текущей категории и корневом пути."""
-
         hint_text = ""
         is_broad_search = self.is_root_dir_too_broad()
-
         if key in ["фото", "видео"]:
             if is_broad_search:
                 hint_text = "⚠️ Внимание: Поиск медиафайлов на всем диске может занять много времени. Рекомендуется выбирать конкретную папку."
@@ -626,68 +613,50 @@ class ModernSearchApp(QMainWindow):
             if is_broad_search:
                 hint_text = "⚠️ Внимание: Поиск архивов может быть медленным. Рекомендуется использовать точные ключевые слова."
         elif key == "эцп":
-            # Это предупреждение всегда должно быть, так как это системный поиск
             hint_text = "🔒 Активировано глубокое сканирование системных папок."
-
         self.hint_label.setText(hint_text)
 
     def update_path_display(self):
-        """Обновляет QLabel с полным текущим путем и обновляет подсказку."""
         display_text = f"Текущий путь: {self.root_dir}"
         self.path_display_label.setText(display_text)
-
         if self.current_filter_key:
             self._update_hint_only(self.current_filter_key)
 
-    # --- Методы, связанные с выбором пути ---
-
     def on_browse_folder(self):
-        """Открывает диалог для выбора конкретной папки."""
         selected_dir = QFileDialog.getExistingDirectory(
             self, "Выберите папку для поиска", self.root_dir
         )
-
         if selected_dir and selected_dir != self.root_dir:
             self.root_dir = selected_dir
             self.add_to_history(selected_dir)
             self.update_path_display()
-            self.start_search()
 
     def set_new_root_dir(self, path):
-        """Устанавливает новый корневой каталог, вызывается из HistoryDialog."""
         if path and path != self.root_dir:
             self.root_dir = path
             self.add_to_history(path)
             self.update_path_display()
-            self.start_search()
 
     def show_history_dialog(self):
-        """Отображает диалог истории поиска."""
         self.search_history = [p for p in self.search_history if os.path.isdir(p)]
-
         if not self.search_history:
             QMessageBox.information(self, "История путей", "История поиска пуста.")
             return
-
         theme_data = THEMES[self.current_theme]
         dialog = HistoryDialog(self.search_history, theme_data, self)
-
         dialog.path_selected.connect(self.set_new_root_dir)
-
         dialog.exec()
 
     def handle_category_click(self, key, clicked_btn):
         for btn in self.menu_buttons:
             btn.setChecked(False)
         clicked_btn.setChecked(True)
-
         if key in ["фото", "архивы"]:
             self.show_extension_selection_dialog(key, clicked_btn)
         else:
             self.change_category(key, clicked_btn)
 
     def show_extension_selection_dialog(self, key, clicked_btn):
-
         if key not in self.json_extension_data:
             QMessageBox.critical(
                 self, "Ошибка", f"Ключ '{key}' не найден в базе расширений."
@@ -699,24 +668,20 @@ class ModernSearchApp(QMainWindow):
             )
             self.change_category("ALL_FILES", all_files_btn)
             return
-
         extensions = self.json_extension_data.get(key, [])
         theme_data = THEMES[self.current_theme]
-
         category_name_full = next(
             (name for name, k in self.categories_map.items() if k == key),
             "Выбранная категория",
         )
         category_name = category_name_full.lstrip().split(" ", 1)[-1]
-
         dialog = ExtensionSelectionDialog(category_name, extensions, theme_data, self)
-
         if dialog.exec() == QDialog.DialogCode.Accepted:
             selected_exts = dialog.get_selected_extensions()
             if selected_exts:
                 self.current_filter_ext = selected_exts
                 self.current_filter_key = key
-                self.start_search()
+                # Поиск не запускается автоматически
             else:
                 QMessageBox.warning(
                     self,
@@ -741,9 +706,7 @@ class ModernSearchApp(QMainWindow):
         for btn in self.menu_buttons:
             btn.setChecked(False)
         clicked_btn.setChecked(True)
-
         self.current_filter_key = key
-
         if key == "ALL_FILES":
             self.current_filter_ext = []
         else:
@@ -754,90 +717,73 @@ class ModernSearchApp(QMainWindow):
                     "Внимание",
                     f"Для '{clicked_btn.text().lstrip()}' не найдено расширений в базе.",
                 )
-
         self._update_hint_only(key)
-
-        self.start_search()
-
-    def restart_timer(self):
-        """Перезапускает таймер для задержки поиска, чтобы не сканировать при каждом нажатии."""
-        self.search_timer.start()
+        # Поиск не запускается автоматически
 
     def stop_all_threads(self):
-        """Полностью останавливает текущий поисковый поток и ждет его завершения."""
         if self.search_thread and self.search_thread.isRunning():
             self.search_thread.requestInterruption()
-
-            # Ожидаем завершения потока (даем до 2 секунд)
             if not self.search_thread.wait(2000):
-                # Если поток не завершился вовремя, просто продолжаем, но сбрасываем ссылку
-                print("Внимание: Поток поиска не завершился за 2 секунды.")
-
-            # Сбрасываем ссылку на поток, чтобы гарантировать, что старый объект не будет использоваться.
-            self.search_thread = None
+                print(
+                    "Внимание: Поток поиска не завершился за 2 секунды. Продолжаем работу UI."
+                )
+            try:
+                self.search_thread.update_results.disconnect(self.update_ui_results)
+                self.search_thread.update_status.disconnect(self.update_status_card)
+            except (TypeError, RuntimeError):
+                pass
 
     def is_searching_for_sensitive_files(self, key):
         return key in ["эцп"]
 
     def start_search(self):
-        self.stop_all_threads()  # Гарантируем остановку перед началом
-
+        # --- ИЗМЕНЕНИЕ: УБРАНА БЛОКИРОВКА ПОВТОРНОГО ПОИСКА ---
+        # Если поиск уже идет, мы его прерываем и запускаем новый
+        if self.search_thread and self.search_thread.isRunning():
+            self.search_thread.requestInterruption()
+            # Не ждем вечно, просто посылаем сигнал остановки и перезапускаем
+        
+        self.is_searching = True
+        
+        # self.stop_all_threads() # Это уже частично сделано выше, но на всякий случай
+        
         term = self.search_input.text().strip()
-
         is_all_files = self.current_filter_key == "ALL_FILES"
-
-        # Поиск НЕ запускается, если: нет слова И нет фильтра И активна НЕ категория "Все файлы"
         if not term and not self.current_filter_ext and not is_all_files:
             self.results_list.clear()
             self.status_labels["status"].setText("Готов")
             self.status_labels["count"].setText("0")
+            self.is_searching = False
             return
-
         self.run_local_search(term, self.current_filter_ext)
 
     def run_local_search(self, term, extensions):
-
-        # 1. Стоп уже был вызван в start_search
-
         deep_scan = self.is_searching_for_sensitive_files(self.current_filter_key)
-
         self.results_list.clear()
         self.status_labels["status"].setText("Поиск...")
         self.status_labels["count"].setText("...")
-
-        # Если "Все файлы" и нет текста, передаем пустые фильтры
-        if self.current_filter_key == "ALL_FILES" and not term:
-            extensions = []
-
-        # 2. Создаем и запускаем НОВЫЙ поток
-        self.search_thread = SearchThread(term, extensions, self.root_dir, deep_scan)
-        self.search_thread.update_results.connect(self.update_ui_results)
-        self.search_thread.update_status.connect(self.update_status_card)
-        self.search_thread.finished.connect(
-            self.on_thread_finished
-        )  # Добавлено для корректного сброса
-        self.search_thread.start()
-
-    def on_thread_finished(self):
-        """Обработчик завершения потока для сброса ссылки после его безопасного завершения."""
         if self.search_thread:
-            # Отключаем сигналы, чтобы при следующем запуске не было дублирования
             try:
                 self.search_thread.update_results.disconnect(self.update_ui_results)
                 self.search_thread.update_status.disconnect(self.update_status_card)
-                self.search_thread.finished.disconnect(self.on_thread_finished)
             except (TypeError, RuntimeError):
                 pass
+        if self.current_filter_key == "ALL_FILES" and not term:
+            extensions = []
+        self.search_thread = SearchThread(term, extensions, self.root_dir, deep_scan)
+        self.search_thread.update_results.connect(self.update_ui_results)
+        self.search_thread.update_status.connect(self.update_status_card)
+        self.search_thread.finished.connect(self.on_search_finished)
+        self.search_thread.start()
 
-            # Сбрасываем ссылку
-            self.search_thread = None
+    def on_search_finished(self):
+        self.is_searching = False
+        # Таймер больше не нужен для блокировки, так как мы разрешаем перезапуск
 
     def update_ui_results(self, results):
         self.results_list.clear()
         self.raw_results_data = results
-
         path_color = THEMES[self.current_theme]["text_path"]
-
         for filename, full_path in results:
             list_item = QListWidgetItem(self.results_list)
             item_widget = FileItemWidget(filename, full_path, path_color)
@@ -858,27 +804,23 @@ class ModernSearchApp(QMainWindow):
             self.status_labels["count"].setText(value)
         elif title == "Отменено":
             self.status_labels["status"].setText("Отменено")
-            # Значение счетчика не меняем, чтобы не сбивать с толку
 
     def open_file_on_double_click(self, item):
-        """Обрабатывает двойной клик: открывает файл."""
         full_path = item.data(Qt.ItemDataRole.UserRole)
         self.open_file(full_path)
 
     def open_file(self, full_path):
-        """Открывает файл с помощью стандартного приложения ОС."""
         if not full_path or not os.path.exists(full_path):
             QMessageBox.warning(
                 self, "Ошибка", "Путь к файлу не найден или файл удален."
             )
             return
-
         try:
             if sys.platform == "win32":
                 os.startfile(full_path)
-            elif sys.platform == "darwin":  # macOS
+            elif sys.platform == "darwin":
                 subprocess.call(("open", full_path))
-            else:  # Linux
+            else:
                 subprocess.call(("xdg-open", full_path))
         except Exception as e:
             QMessageBox.critical(
@@ -886,22 +828,17 @@ class ModernSearchApp(QMainWindow):
             )
 
     def show_in_folder(self, full_path):
-        """Открывает папку, содержащую файл, и выделяет его (если возможно)."""
         if not full_path or not os.path.exists(full_path):
             QMessageBox.warning(
                 self, "Ошибка", "Путь к файлу не найден или файл удален."
             )
             return
-
         try:
             if sys.platform == "win32":
-                # Windows: Открывает Проводник и выделяет файл
                 subprocess.Popen(["explorer", "/select,", os.path.normpath(full_path)])
-            elif sys.platform == "darwin":  # macOS
-                # macOS: Открывает Finder и выделяет файл
+            elif sys.platform == "darwin":
                 subprocess.call(["open", "-R", full_path])
-            else:  # Linux
-                # Linux: Просто открывает родительскую папку
+            else:
                 parent_dir = os.path.dirname(full_path)
                 subprocess.call(["xdg-open", parent_dir])
         except Exception as e:
@@ -913,7 +850,6 @@ class ModernSearchApp(QMainWindow):
         item = self.results_list.itemAt(position)
         if item:
             full_path = item.data(Qt.ItemDataRole.UserRole)
-
             if full_path and os.path.exists(full_path):
                 menu = QMenu()
                 menu.setStyleSheet(
@@ -932,13 +868,10 @@ class ModernSearchApp(QMainWindow):
                     }}
                 """
                 )
-
-                # --- ЕДИНСТВЕННЫЙ ПУНКТ МЕНЮ: "Показать в папке" ---
                 show_in_folder_action = menu.addAction("📂 Показать в папке")
                 show_in_folder_action.triggered.connect(
                     lambda: self.show_in_folder(full_path)
                 )
-
                 menu.exec(self.results_list.mapToGlobal(position))
 
     def toggle_theme(self):
@@ -949,13 +882,11 @@ class ModernSearchApp(QMainWindow):
             self.current_theme = "dark"
             self.theme_toggle.setText("🌙 Тёмная тема")
         self.apply_theme()
-
         if self.raw_results_data:
             self.update_ui_results(self.raw_results_data)
 
     def apply_theme(self):
         t = THEMES[self.current_theme]
-
         path_label_style = f"""
             QLabel#PathDisplayLabel {{
                 color: {t['text_secondary']}; 
@@ -970,7 +901,6 @@ class ModernSearchApp(QMainWindow):
                 max-height: 30px;
             }}
         """
-
         hint_label_style = f"""
             QLabel#HintLabel {{
                 color: #FF5733; 
@@ -981,7 +911,6 @@ class ModernSearchApp(QMainWindow):
                 font-weight: 500;
             }}
         """
-
         secondary_button_style = f"""
             QPushButton#SecondaryButton {{
                 background-color: {t['input_bg']}; 
@@ -997,7 +926,6 @@ class ModernSearchApp(QMainWindow):
                 color: {t['accent']};
             }}
         """
-
         accent_button_style = f"""
             QPushButton#AccentButton {{
                 background-color: {t['accent']}; 
@@ -1012,13 +940,10 @@ class ModernSearchApp(QMainWindow):
                 border: 1px solid {t['accent_hover']};
             }}
         """
-
         style = f"""
             QMainWindow {{ background-color: {t['bg_main']}; }}
             QWidget {{ color: {t['text_main']}; font-family: 'Segoe UI', sans-serif; font-size: 14px; }}
-            
             QFrame#Sidebar {{ background-color: {t['bg_secondary']}; border-right: 1px solid {t['border']}; }}
-            
             QPushButton {{
                 background-color: transparent; border: none; text-align: left;
                 padding-left: 20px; border-radius: 10px; color: {t['text_secondary']}; font-weight: 600;
@@ -1027,7 +952,6 @@ class ModernSearchApp(QMainWindow):
             QPushButton:checked {{ 
                 background-color: {t['hover']}; color: {t['accent']}; border-left: 4px solid {t['accent']};
             }}
-
             QPushButton#ThemeToggle {{
                 padding-left: 15px;
                 border-radius: 12px;
@@ -1035,24 +959,20 @@ class ModernSearchApp(QMainWindow):
                 background-color: {t['bg_alternate']}; 
                 color: {t['text_main']}; 
             }}
-            
             {path_label_style}
             {hint_label_style}
-            
             QLineEdit {{
                 background-color: {t['input_bg']}; color: {t['text_main']};
                 border: 1px solid {t['border']}; border-radius: 12px; padding: 0 15px; font-weight: 500;
             }}
             QLineEdit:focus {{ border: 1px solid {t['accent']}; }}
-
             {accent_button_style}
             {secondary_button_style}
-
             QPushButton#IconBtn {{
                 background-color: {t['input_bg']}; 
                 border-radius: 12px; 
                 border: 1px solid {t['border']};
-                background-image: url(./images/refresh_icon.png); 
+                background-image: url(./images/refresh.png); 
                 background-repeat: no-repeat;
                 background-position: center;
                 color: transparent; 
@@ -1062,7 +982,6 @@ class ModernSearchApp(QMainWindow):
                 background-color: {t['hover']}; 
                 border: 1px solid {t['text_secondary']}; 
             }}
-            
             QFrame#InfoCard {{
                 background-color: {t['card_bg']}; border-radius: 15px; border: 1px solid {t['border']};
             }}
@@ -1070,19 +989,41 @@ class ModernSearchApp(QMainWindow):
             QLabel#CardValue {{ color: {t['accent']}; font-size: 24px; font-weight: bold; }}
 
             QListWidget {{
-                background-color: {t['bg_secondary']}; border-radius: 15px; border: 1px solid {t['border']}; 
-                padding: 5px; outline: none;
+                background-color: {t['bg_secondary']}; 
+                alternate-background-color: {t['bg_alternate']}; /* Цвет полоски */
+                border-radius: 15px; 
+                border: 1px solid {t['border']}; 
+                padding: 5px; 
+                outline: none;
             }}
             
-            QListWidget::item:!has-children {{ 
-                padding: 0; 
-            }}
-            QListWidget::item:nth-child(even) {{
-                background-color: {t['bg_alternate']}; 
-                border-radius: 5px; 
+            QListWidget::item {{ 
+                background: transparent;
+                border: none;
+                padding: 0px; 
             }}
             QListWidget::item:selected {{ 
                 background-color: {t['hover']}; 
+                border-radius: 5px;
+            }}
+            
+            /* --- СТИЛЬ ДЛЯ QMessageBox (ВСПЛЫВАЮЩИЕ ОКНА) --- */
+            QMessageBox {{
+                background-color: {t['dialog_bg']};
+                color: {t['text_main']};
+            }}
+            QMessageBox QLabel {{
+                color: {t['text_main']};
+            }}
+            QMessageBox QPushButton {{
+                background-color: {t['accent']};
+                color: {t['accent_text']};
+                border-radius: 6px;
+                padding: 6px 12px;
+                min-width: 60px;
+            }}
+            QMessageBox QPushButton:hover {{
+                background-color: {t['accent_hover']};
             }}
         """
         self.setStyleSheet(style)
@@ -1091,9 +1032,6 @@ class ModernSearchApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = ModernSearchApp()
-
-    # АВТОМАТИЧЕСКОЕ РАЗВЕРТЫВАНИЕ
     window.show()
     window.showMaximized()
-
     sys.exit(app.exec())
