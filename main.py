@@ -30,6 +30,20 @@ from PyQt6.QtGui import (
     QShortcut,
 )  # Добавил QKeySequence и QShortcut
 
+
+# --- ВСТАВИТЬ ЭТУ ФУНКЦИЮ ПОСЛЕ ИМПОРТОВ ---
+def resource_path(relative_path):
+    """ Помогает найти файлы рядом с EXE (для режима --onedir) """
+    if getattr(sys, 'frozen', False):
+        # Если запущено как EXE, ищем в папке с программой
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Если запущено из Python, ищем в текущей папке
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 # --- 0. НАСТРОЙКИ ЦВЕТОВ (ТЕМЫ) ---
 THEMES = {
     "dark": {
@@ -367,7 +381,7 @@ class ModernSearchApp(QMainWindow):
         self.change_category("ALL_FILES", self.menu_buttons[0])
 
     def load_extensions_json(self):
-        file_path = "extensions.json"
+        file_path = resource_path("extensions.json")
         if not os.path.exists(file_path):
             QMessageBox.critical(self, "Ошибка Базы", f"Файл '{file_path}' не найден!")
             return {}
@@ -435,18 +449,14 @@ class ModernSearchApp(QMainWindow):
         self.menu_buttons = []
 
         icon_paths = {
-            "docs": "./images/doc_file.png",
-            "power-bi": "./images/power-bi.png",
-            "word": "./images/word.png",
-            "excel": "./images/excel.png",
-            "powerpoint": "./images/powerpoint.png",
-            "pdf": "./images/pdf.png",
-            "picture": "./images/picture.png",
-            "video": "./images/video.png",
-            "office_old": "./images/ms_office.png",
-            "xmind": "./images/XMind.png",
-            "архивы": "./images/archive.png",
-            "эцп": "./images/ncalayer.png",
+            "office_old": resource_path("images/ms_office.png"),
+            "xmind": resource_path("images/XMind_icon.png"),
+            "word": resource_path("images/word.png"),
+            "excel": resource_path("images/excel.png"),
+            "power-bi": resource_path("images/power-bi_icon.png"),
+            "pdf": resource_path("images/pdf.png"),
+            "архивы": resource_path("images/archive.png"),
+            "эцп": resource_path("images/ncalayer.png"),
         }
 
         self.categories_map = {
@@ -539,11 +549,15 @@ class ModernSearchApp(QMainWindow):
         self.refresh_btn = QPushButton("")
         self.refresh_btn.setFixedSize(50, 50)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # --- ДОБАВИЛ ЭТИ ДВЕ СТРОКИ: ---
+        self.refresh_btn.setIcon(QIcon(resource_path("images/refresh_icon.png")))
+        self.refresh_btn.setIconSize(QSize(24, 24))
+        # -------------------------------
 
-        # --- ИЗМЕНЕНИЕ: Кнопка обновляет поиск, а не просто текст ---
         self.refresh_btn.clicked.connect(self.start_search)
-
         self.refresh_btn.setObjectName("IconBtn")
+
         top_bar.addWidget(self.refresh_btn)
 
         content_layout.addLayout(top_bar)
@@ -979,9 +993,6 @@ class ModernSearchApp(QMainWindow):
                 background-color: {t['input_bg']}; 
                 border-radius: 12px; 
                 border: 1px solid {t['border']};
-                background-image: url(./images/refresh.png); 
-                background-repeat: no-repeat;
-                background-position: center;
                 color: transparent; 
                 font-size: 0;
             }}
