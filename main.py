@@ -23,7 +23,12 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
-from PyQt6.QtGui import QCursor, QIcon, QKeySequence, QShortcut # Добавил QKeySequence и QShortcut
+from PyQt6.QtGui import (
+    QCursor,
+    QIcon,
+    QKeySequence,
+    QShortcut,
+)  # Добавил QKeySequence и QShortcut
 
 # --- 0. НАСТРОЙКИ ЦВЕТОВ (ТЕМЫ) ---
 THEMES = {
@@ -143,7 +148,7 @@ class HistoryDialog(QDialog):
     def __init__(self, history_list, theme_data, parent=None):
         super().__init__(parent)
         self.setWindowTitle("История путей поиска")
-        
+
         self.setStyleSheet(
             f"""
             background-color: {theme_data['dialog_bg']}; 
@@ -354,7 +359,7 @@ class ModernSearchApp(QMainWindow):
         self.setup_content_area()
         self.update_path_display()
         self.apply_theme()
-        
+
         # --- ДОБАВЛЕНО: Глобальная клавиша F5 для обновления ---
         self.refresh_shortcut = QShortcut(QKeySequence("F5"), self)
         self.refresh_shortcut.activated.connect(self.start_search)
@@ -509,7 +514,9 @@ class ModernSearchApp(QMainWindow):
         self.search_input.setPlaceholderText("Введите имя файла...")
         self.search_input.setFixedHeight(50)
         # Отключен автопоиск: убрано textChanged.connect
-        self.search_input.returnPressed.connect(self.start_search)  # Поиск только по Enter
+        self.search_input.returnPressed.connect(
+            self.start_search
+        )  # Поиск только по Enter
         top_bar.addWidget(self.search_input)
         top_bar.addStretch()
 
@@ -532,10 +539,10 @@ class ModernSearchApp(QMainWindow):
         self.refresh_btn = QPushButton("")
         self.refresh_btn.setFixedSize(50, 50)
         self.refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        
+
         # --- ИЗМЕНЕНИЕ: Кнопка обновляет поиск, а не просто текст ---
         self.refresh_btn.clicked.connect(self.start_search)
-        
+
         self.refresh_btn.setObjectName("IconBtn")
         top_bar.addWidget(self.refresh_btn)
 
@@ -579,9 +586,9 @@ class ModernSearchApp(QMainWindow):
         self.results_list.setWordWrap(True)
         self.results_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.results_list.customContextMenuRequested.connect(self.show_context_menu)
-        
-        self.results_list.setAlternatingRowColors(True) 
-        
+
+        self.results_list.setAlternatingRowColors(True)
+
         self.results_list.itemDoubleClicked.connect(self.open_file_on_double_click)
 
         content_layout.addWidget(self.results_list)
@@ -742,11 +749,11 @@ class ModernSearchApp(QMainWindow):
         if self.search_thread and self.search_thread.isRunning():
             self.search_thread.requestInterruption()
             # Не ждем вечно, просто посылаем сигнал остановки и перезапускаем
-        
+
         self.is_searching = True
-        
+
         # self.stop_all_threads() # Это уже частично сделано выше, но на всякий случай
-        
+
         term = self.search_input.text().strip()
         is_all_files = self.current_filter_key == "ALL_FILES"
         if not term and not self.current_filter_ext and not is_all_files:
