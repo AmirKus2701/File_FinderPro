@@ -42,7 +42,7 @@
   "pdf": [".pdf"],
   "xmind": [".xmind"],
   "эцп": [".p12"],
-  "фото": [
+  "picture": [
     ".jpg",
     ".jpeg",
     ".png",
@@ -56,7 +56,7 @@
     ".raw",
     ".heic"
   ],
-  "видео": [
+  "video": [
     ".mp4",
     ".mov",
     ".avi",
